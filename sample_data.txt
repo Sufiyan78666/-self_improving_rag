@@ -1,0 +1,3 @@
+The self-improving RAG system uses a cross-encoder to rerank retrieved documents.
+User feedback is collected through thumbs up/down and citation clicks.
+The system uses FAISS for vector search and Gemini Pro for answer generation.

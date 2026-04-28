@@ -1,0 +1,3 @@
+The quick brown fox jumps over the lazy dog.
+Quantum computing relies on qubits to perform complex calculations.
+Deep learning models like Transformers have revolutionized natural language processing.

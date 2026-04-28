@@ -1,0 +1,3 @@
+[server]
+# Fixed 'Tried to instantiate class __path__._path' error with torch
+folderWatchBlacklist = ["c:\\Users\\asus\\AppData\\Roaming\\Python\\Python313\\site-packages\\torch"]

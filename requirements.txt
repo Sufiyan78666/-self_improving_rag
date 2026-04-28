@@ -1,0 +1,15 @@
+sentence-transformers
+faiss-cpu
+PyPDF2
+aiosqlite
+google-genai
+streamlit
+streamlit-chat
+streamlit-feedback
+apscheduler
+torch
+numpy
+pytest
+pytest-asyncio
+python-dotenv
+rank_bm25
