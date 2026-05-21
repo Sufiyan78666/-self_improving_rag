@@ -164,18 +164,32 @@ if prompt := st.chat_input("What is the main topic of these documents?"):
     with st.chat_message("assistant"):
         with st.spinner("Thinking & Searching..."):
             try:
-                response = run_async(run_pipeline(prompt, session_id=st.session_state.session_id))
-                
-                st.markdown(response.answer)
-                
+                answer_parts = []
+                placeholder = st.empty()
+
+                def on_stream(delta: str) -> None:
+                    answer_parts.append(delta)
+                    placeholder.markdown("".join(answer_parts))
+
+                response = run_async(
+                    run_pipeline(
+                        prompt,
+                        session_id=st.session_state.session_id,
+                        stream_callback=on_stream,
+                    )
+                )
+
+                # Ensure final answer is rendered
+                placeholder.markdown(response.answer)
+
                 # Add assistant message to history
                 st.session_state.messages.append({
-                    "role": "assistant", 
+                    "role": "assistant",
                     "content": response.answer,
                     "cited_chunks": response.cited_chunks,
-                    "session_id": response.session_id
+                    "session_id": response.session_id,
                 })
-                
+
                 st.rerun() # Refresh to show references and feedback buttons
 
             except Exception as e:

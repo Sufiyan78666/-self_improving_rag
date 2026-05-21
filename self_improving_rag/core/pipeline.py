@@ -6,8 +6,9 @@ async function that powers the UI and CLI.
 """
 
 import logging
+import os
 import time
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 
@@ -31,7 +32,8 @@ logger = logging.getLogger(__name__)
 async def run_pipeline(
     query: str,
     session_id: Optional[str] = None,
-    force_model: Optional[str] = None
+    force_model: Optional[str] = None,
+    stream_callback: Optional[Callable[[str], None]] = None,
 ) -> RAGResponse:
     """
     Execute the full end-to-end RAG workflow.
@@ -57,6 +59,11 @@ async def run_pipeline(
     """
     start_time = time.time()
     
+    langsmith_run = _start_langsmith_run({
+        "query": query,
+        "session_id": session_id,
+    })
+
     try:
         # 0. Initialize DB if not already done
         await init_db()
@@ -84,7 +91,7 @@ async def run_pipeline(
         # 4. Generation
         t0 = time.time()
         prompt = format_prompt(query, reranked_chunks)
-        answer = await generate_response(prompt)
+        answer = await generate_response(prompt, stream_callback=stream_callback)
         logger.info(f"Generation took {time.time() - t0:.2f}s")
 
         # 5. Parsing & Citations
@@ -114,10 +121,51 @@ async def run_pipeline(
         )
 
         logger.info(f"Pipeline run complete in {elapsed:.2f}s for query: '{query[:50]}'")
+        _end_langsmith_run(langsmith_run, {
+            "answer": answer,
+            "metadata": response.metadata,
+        })
         return response
 
     except Exception as exc:
         logger.error(f"Pipeline failed: {exc}", exc_info=True)
+        _end_langsmith_run(langsmith_run, error=str(exc))
         if isinstance(exc, RAGException):
             raise
         raise RAGException(f"Pipeline execution error: {exc}") from exc
+
+
+def _start_langsmith_run(inputs: dict):
+    if not os.getenv("LANGSMITH_API_KEY"):
+        return None
+    try:
+        from langsmith import Client  # type: ignore
+        from langsmith.run_trees import RunTree  # type: ignore
+    except Exception:
+        return None
+
+    try:
+        client = Client()
+        run = RunTree(
+            name="rag_pipeline",
+            run_type="chain",
+            inputs=inputs,
+            client=client,
+        )
+        run.post()
+        return run
+    except Exception:
+        return None
+
+
+def _end_langsmith_run(run, outputs: Optional[dict] = None, error: Optional[str] = None) -> None:
+    if run is None:
+        return
+    try:
+        if error:
+            run.end(error=error)
+        else:
+            run.end(outputs=outputs or {})
+        run.patch()
+    except Exception:
+        return

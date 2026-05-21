@@ -7,7 +7,7 @@ Handles authentication, client initialization, and generation logic.
 import logging
 import os
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 import requests
 from google import genai
@@ -39,7 +39,10 @@ def _create_gemini_client() -> genai.Client:
         raise GenerationFailedError(f"Failed to initialize Gemini Client: {exc}") from exc
 
 
-async def generate_response(prompt: str) -> str:
+async def generate_response(
+    prompt: str,
+    stream_callback: Optional[Callable[[str], None]] = None,
+) -> str:
     """
     Send a prompt to the configured LLM provider and return the response text.
     """
@@ -48,9 +51,14 @@ async def generate_response(prompt: str) -> str:
     elif LLM_PROVIDER == "nvidia":
         return await _generate_nvidia_response(prompt)
     elif LLM_PROVIDER == "groq":
+        if stream_callback:
+            return await _generate_groq_response_stream(prompt, stream_callback)
         return await _generate_groq_response(prompt)
     else:
-        return await _generate_gemini_response(prompt)
+        answer = await _generate_gemini_response(prompt)
+        if stream_callback:
+            stream_callback(answer)
+        return answer
 
 
 async def _generate_gemini_response(prompt: str) -> str:
@@ -212,6 +220,59 @@ async def _generate_groq_response(prompt: str) -> str:
         elapsed = time.time() - start_time
         logger.info(f"Generated Groq response in {elapsed:.2f}s (length {len(content)})")
         return str(content)
+
+    except ImportError:
+        raise GenerationFailedError(
+            "groq package not found. Run 'pip install groq'."
+        )
+    except Exception as exc:
+        raise GenerationFailedError(f"Groq generation failed: {exc}") from exc
+
+
+async def _generate_groq_response_stream(
+    prompt: str,
+    stream_callback: Callable[[str], None],
+) -> str:
+    """
+    Send a prompt to Groq and stream the response text.
+    """
+    start_time = time.time()
+    try:
+        from groq import Groq  # type: ignore
+
+        if not GROQ_API_KEY:
+            raise GenerationFailedError("GROQ_API_KEY not found in configuration.")
+
+        client = Groq(api_key=GROQ_API_KEY)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+
+        full_text = ""
+        stream = client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=messages,
+            temperature=0.1,
+            top_p=0.95,
+            max_tokens=1024,
+            stream=True,
+        )
+
+        for chunk in stream:
+            delta = ""
+            if chunk.choices:
+                delta = chunk.choices[0].delta.content or ""
+            if delta:
+                full_text += delta
+                stream_callback(delta)
+
+        if not full_text:
+            raise GenerationFailedError("Groq returned an empty response.")
+
+        elapsed = time.time() - start_time
+        logger.info(f"Generated Groq response in {elapsed:.2f}s (length {len(full_text)})")
+        return full_text
 
     except ImportError:
         raise GenerationFailedError(
