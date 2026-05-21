@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import os
+from io import BytesIO
 from pathlib import Path
 from typing import List, Optional
 
@@ -69,9 +70,7 @@ def _extract_text_from_txt(path: str) -> str:
 
 def _extract_text_from_pdf(path: str) -> str:
     """
-    Extract text from a PDF file using PyPDF2.
-
-    Falls back to empty string per page if extraction fails.
+    Extract text from a PDF file using PyPDF2 or PyMuPDF.
 
     Args:
         path: Absolute or relative path to the .pdf file.
@@ -79,30 +78,45 @@ def _extract_text_from_pdf(path: str) -> str:
     Returns:
         str: Concatenated text of all pages.
     """
+    text_parts: List[str] = []
     try:
         import PyPDF2  # type: ignore
-    except ImportError:
-        raise ImportError("PyPDF2 is required for PDF ingestion. Run: pip install PyPDF2")
+        with open(path, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            for page in reader.pages:
+                try:
+                    text_parts.append(page.extract_text() or "")
+                except Exception:
+                    text_parts.append("")
+    except Exception:
+        text_parts = []
 
-    text_parts: List[str] = []
-    with open(path, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            try:
-                text_parts.append(page.extract_text() or "")
-            except Exception:
-                text_parts.append("")
+    if any(part.strip() for part in text_parts):
+        return "\n".join(text_parts)
+
+    try:
+        import fitz  # type: ignore
+    except ImportError:
+        logger.warning("PyMuPDF not installed. Skipping PyMuPDF text extraction.")
+        return ""
+
+    try:
+        doc = fitz.open(path)
+        for page in doc:
+            text_parts.append(page.get_text("text") or "")
+    except Exception as exc:
+        logger.warning(f"PyMuPDF text extraction failed for {path}: {exc}")
+        return ""
     return "\n".join(text_parts)
 
 
 def _extract_text_from_pdf_ocr(path: str) -> str:
     """
-    Extract text from a PDF using OCR (Tesseract via pdf2image).
+    Extract text from a PDF using OCR (Tesseract via PyMuPDF, fallback to pdf2image).
 
     Returns empty string if OCR deps are missing.
     """
     try:
-        from pdf2image import convert_from_path  # type: ignore
         import pytesseract  # type: ignore
     except ImportError:
         logger.warning("OCR dependencies not installed. Skipping OCR extraction.")
@@ -113,14 +127,35 @@ def _extract_text_from_pdf_ocr(path: str) -> str:
 
     text_parts: List[str] = []
     try:
-        images = convert_from_path(path, dpi=OCR_DPI)
-        for image in images:
+        import fitz  # type: ignore
+        from PIL import Image  # type: ignore
+
+        doc = fitz.open(path)
+        for page in doc:
+            pix = page.get_pixmap(dpi=OCR_DPI)
+            image = Image.open(BytesIO(pix.tobytes("png")))
             text_parts.append(pytesseract.image_to_string(image) or "")
+        return "\n".join(text_parts)
+    except ImportError:
+        logger.warning("PyMuPDF/Pillow not installed. Falling back to pdf2image OCR.")
     except Exception as exc:
         logger.warning(f"OCR extraction failed for {path}: {exc}")
         return ""
 
-    return "\n".join(text_parts)
+    try:
+        from pdf2image import convert_from_path  # type: ignore
+    except ImportError:
+        logger.warning("pdf2image not installed. Skipping OCR extraction.")
+        return ""
+
+    try:
+        images = convert_from_path(path, dpi=OCR_DPI)
+        for image in images:
+            text_parts.append(pytesseract.image_to_string(image) or "")
+        return "\n".join(text_parts)
+    except Exception as exc:
+        logger.warning(f"OCR extraction failed for {path}: {exc}")
+        return ""
 
 
 def extract_text(path: str) -> str:

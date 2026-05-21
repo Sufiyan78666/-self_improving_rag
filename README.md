@@ -65,7 +65,8 @@ python run.py ui
 
 #### OCR Notes (PDF scans)
 - Install Tesseract OCR and set `TESSERACT_CMD` in `.env` (Windows example above).
-- Install Poppler for `pdf2image` and ensure `pdftoppm` is on your PATH.
+- PyMuPDF is used for OCR rendering by default (no Poppler needed).
+- Poppler is only required if you want to use the `pdf2image` fallback.
 
 **Start the Background Scheduler (Automatic Training):**
 ```bash
