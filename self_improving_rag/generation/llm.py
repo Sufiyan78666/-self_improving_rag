@@ -12,7 +12,13 @@ from typing import Optional
 import requests
 from google import genai
 from google.genai import types
-from self_improving_rag.core.config import LLM_MODEL, LLM_PROVIDER, OLLAMA_BASE_URL, NVIDIA_API_KEY
+from self_improving_rag.core.config import (
+    LLM_MODEL,
+    LLM_PROVIDER,
+    OLLAMA_BASE_URL,
+    NVIDIA_API_KEY,
+    GROQ_API_KEY,
+)
 from self_improving_rag.core.exceptions import GenerationFailedError
 from self_improving_rag.generation.prompt import SYSTEM_PROMPT
 
@@ -41,6 +47,8 @@ async def generate_response(prompt: str) -> str:
         return await _generate_ollama_response(prompt)
     elif LLM_PROVIDER == "nvidia":
         return await _generate_nvidia_response(prompt)
+    elif LLM_PROVIDER == "groq":
+        return await _generate_groq_response(prompt)
     else:
         return await _generate_gemini_response(prompt)
 
@@ -162,3 +170,52 @@ async def _generate_nvidia_response(prompt: str) -> str:
         )
     except Exception as exc:
         raise GenerationFailedError(f"NVIDIA generation failed: {exc}") from exc
+
+
+async def _generate_groq_response(prompt: str) -> str:
+    """
+    Send a prompt to Groq and return the generated response text.
+    """
+    start_time = time.time()
+    try:
+        from groq import Groq  # type: ignore
+        import asyncio
+        from functools import partial
+
+        if not GROQ_API_KEY:
+            raise GenerationFailedError("GROQ_API_KEY not found in configuration.")
+
+        client = Groq(api_key=GROQ_API_KEY)
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            partial(
+                client.chat.completions.create,
+                model=LLM_MODEL,
+                messages=messages,
+                temperature=0.1,
+                top_p=0.95,
+                max_tokens=1024,
+            ),
+        )
+
+        content = response.choices[0].message.content if response.choices else ""
+        if not content:
+            raise GenerationFailedError("Groq returned an empty response.")
+
+        elapsed = time.time() - start_time
+        logger.info(f"Generated Groq response in {elapsed:.2f}s (length {len(content)})")
+        return str(content)
+
+    except ImportError:
+        raise GenerationFailedError(
+            "groq package not found. Run 'pip install groq'."
+        )
+    except Exception as exc:
+        raise GenerationFailedError(f"Groq generation failed: {exc}") from exc

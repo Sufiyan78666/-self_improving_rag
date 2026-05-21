@@ -19,7 +19,7 @@ RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 # Path to save/load the fine-tuned reranker
 RERANKER_SAVED_PATH: str = os.path.join("models", "reranker")
 
-# LLM Provider (gemini or ollama)
+# LLM Provider (gemini, ollama, nvidia, or groq)
 LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gemini").lower()
 
 # LLM model for generation
@@ -30,6 +30,9 @@ OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # NVIDIA specific settings
 NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY")
+
+# Groq specific settings
+GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
 
 # --- Retrieval & Reranking Settings ---
 # Number of chunks to retrieve from the vector store initially

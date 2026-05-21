@@ -1,8 +1,11 @@
 sentence-transformers
 faiss-cpu
 PyPDF2
+pdf2image
+pytesseract
 aiosqlite
 google-genai
+groq
 streamlit
 streamlit-chat
 streamlit-feedback

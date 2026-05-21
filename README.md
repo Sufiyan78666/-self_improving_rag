@@ -45,9 +45,14 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory:
 ```env
 GOOGLE_API_KEY="your_gemini_key"
+LLM_PROVIDER="gemini" # or "ollama" / "nvidia"
+LLM_MODEL="gemini-2.5-flash"
 OLLAMA_BASE_URL="http://localhost:11434"
-DEFAULT_MODEL="ollama/llama3" # or gemini/gemini-1.5-flash
-FEEDBACK_THRESHOLD=50
+NVIDIA_API_KEY="your_nvidia_key"
+GROQ_API_KEY="your_groq_key"
+OCR_ENABLED="true"
+TESSERACT_CMD="C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+OCR_DPI=200
 ```
 
 ### 4. Run the Application
@@ -57,6 +62,10 @@ The system consists of two main components:
 ```bash
 python run.py ui
 ```
+
+#### OCR Notes (PDF scans)
+- Install Tesseract OCR and set `TESSERACT_CMD` in `.env` (Windows example above).
+- Install Poppler for `pdf2image` and ensure `pdftoppm` is on your PATH.
 
 **Start the Background Scheduler (Automatic Training):**
 ```bash

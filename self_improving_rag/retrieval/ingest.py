@@ -19,6 +19,9 @@ from self_improving_rag.core.config import (
     CHUNK_SIZE,
     CHUNK_OVERLAP,
     EMBED_MODEL,
+    OCR_ENABLED,
+    OCR_DPI,
+    TESSERACT_CMD,
 )
 from self_improving_rag.core.exceptions import EmbeddingFailedError
 from self_improving_rag.retrieval.vector_store import get_store
@@ -92,6 +95,34 @@ def _extract_text_from_pdf(path: str) -> str:
     return "\n".join(text_parts)
 
 
+def _extract_text_from_pdf_ocr(path: str) -> str:
+    """
+    Extract text from a PDF using OCR (Tesseract via pdf2image).
+
+    Returns empty string if OCR deps are missing.
+    """
+    try:
+        from pdf2image import convert_from_path  # type: ignore
+        import pytesseract  # type: ignore
+    except ImportError:
+        logger.warning("OCR dependencies not installed. Skipping OCR extraction.")
+        return ""
+
+    if TESSERACT_CMD:
+        pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
+
+    text_parts: List[str] = []
+    try:
+        images = convert_from_path(path, dpi=OCR_DPI)
+        for image in images:
+            text_parts.append(pytesseract.image_to_string(image) or "")
+    except Exception as exc:
+        logger.warning(f"OCR extraction failed for {path}: {exc}")
+        return ""
+
+    return "\n".join(text_parts)
+
+
 def extract_text(path: str) -> str:
     """
     Dispatch text extraction based on file extension.
@@ -107,7 +138,11 @@ def extract_text(path: str) -> str:
     """
     ext = Path(path).suffix.lower()
     if ext == ".pdf":
-        return _extract_text_from_pdf(path)
+        text = _extract_text_from_pdf(path)
+        if not text.strip() and OCR_ENABLED:
+            logger.info(f"No text found in {path}; attempting OCR.")
+            text = _extract_text_from_pdf_ocr(path)
+        return text
     elif ext == ".txt":
         return _extract_text_from_txt(path)
     else:
