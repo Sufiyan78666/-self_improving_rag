@@ -20,10 +20,10 @@ RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 RERANKER_SAVED_PATH: str = os.path.join("models", "reranker")
 
 # LLM Provider (gemini, ollama, nvidia, or groq)
-LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gemini").lower()
+LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq").lower()
 
 # LLM model for generation
-LLM_MODEL: str = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+LLM_MODEL: str = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 
 # Ollama specific settings
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -33,6 +33,11 @@ NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY")
 
 # Groq specific settings
 GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
+
+# --- OCR Settings ---
+OCR_ENABLED: bool = os.getenv("OCR_ENABLED", "true").lower() == "true"
+TESSERACT_CMD: str = os.getenv("TESSERACT_CMD", "")
+OCR_DPI: int = int(os.getenv("OCR_DPI", "200"))
 
 # --- Retrieval & Reranking Settings ---
 # Number of chunks to retrieve from the vector store initially

@@ -276,6 +276,14 @@ def _save_chunk_cache(cache: dict) -> None:
         json.dump(cache, f, indent=2, ensure_ascii=False)
 
 
+def clear_chunk_cache(delete_file: bool = True) -> None:
+    """Clear the chunk cache file or reset it to an empty dict."""
+    if delete_file and os.path.exists(_CHUNKS_CACHE):
+        os.remove(_CHUNKS_CACHE)
+        return
+    _save_chunk_cache({})
+
+
 # ──────────────────────────────────────────
 # Main ingest entry point
 # ──────────────────────────────────────────

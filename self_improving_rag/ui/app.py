@@ -18,7 +18,8 @@ from pathlib import Path
 # Add root folder to path to allow imports
 sys.path.append(str(Path(__file__).parents[2]))
 
-from self_improving_rag.retrieval.ingest import ingest_file
+from self_improving_rag.retrieval.ingest import ingest_file, clear_chunk_cache
+from self_improving_rag.retrieval.vector_store import reset_store
 from self_improving_rag.core.pipeline import run_pipeline
 from self_improving_rag.feedback.capture import log_feedback
 from self_improving_rag.feedback.schema import SignalType
@@ -61,6 +62,12 @@ with st.sidebar:
         type=["pdf", "txt"], 
         accept_multiple_files=True
     )
+    force_ingest = st.checkbox("Force re-ingest (same filename)")
+
+    if st.button("🧹 Reset Index & Cache"):
+        reset_store(delete_files=True)
+        clear_chunk_cache(delete_file=True)
+        st.success("Vector store and cache cleared.")
     
     if st.button("🚀 Process & Ingest"):
         if uploaded_files:
@@ -77,7 +84,7 @@ with st.sidebar:
                     f.write(uploaded_file.getbuffer())
                 
                 status_text.text(f"Ingesting {uploaded_file.name}...")
-                count = ingest_file(str(temp_path))
+                count = ingest_file(str(temp_path), force=force_ingest)
                 
                 progress = (i + 1) / len(uploaded_files)
                 progress_bar.progress(progress)

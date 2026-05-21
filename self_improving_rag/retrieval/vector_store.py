@@ -216,3 +216,22 @@ def get_store() -> FAISSVectorStore:
         _store_instance = FAISSVectorStore()
         _store_instance.load()
     return _store_instance
+
+
+def reset_store(delete_files: bool = True) -> None:
+    """Reset the in-memory store and optionally delete persisted index files."""
+    global _store_instance
+    if _store_instance is None:
+        _store_instance = FAISSVectorStore()
+
+    _store_instance.dimension = None
+    _store_instance.index = None
+    _store_instance.id_to_meta = {}
+    _store_instance.chunk_id_to_row = {}
+    _store_instance.tokenized_corpus = []
+    _store_instance.bm25 = None
+
+    if delete_files:
+        for path in (_INDEX_FILE, _META_FILE, _SPARSE_FILE):
+            if os.path.exists(path):
+                os.remove(path)
