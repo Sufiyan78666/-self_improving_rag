@@ -2,9 +2,12 @@
 
 A production-grade RAG system that autonomously enhances its retrieval precision by fine-tuning a Cross-Encoder reranker based on real-time user feedback.
 
+## Live Demo
+https://erx8gib29mgjvxs4cufkcn.streamlit.app/
+
 ## 🌟 Key Features
 - **Hybrid Retrieval Engine**: Seamlessly combines Dense (FAISS) and Sparse (BM25) search using Reciprocal Rank Fusion (RRF).
-- **Dual-Model Support**: Support for cloud-scale LLMs (**Gemini 1.5 Pro/Flash**) and local inference via **Ollama**.
+- **Multi-Provider LLM Support**: Use **Groq**, **Gemini**, **NVIDIA**, or local inference via **Ollama**.
 - **Automated Self-Improvement**: A background scheduler triggers fine-tuning loops once a feedback threshold (e.g., 50 signals) is reached.
 - **Advanced Reranking**: Utilizes `SentenceTransformers` for high-precision document sorting, automatically updated by the training pipeline.
 - **Smart Feedback Loop**: Captures explicit (thumbs up/down) and implicit (dwell time, citation clicks) signals to build high-quality training sets.
@@ -52,6 +55,7 @@ NVIDIA_API_KEY="your_nvidia_key"
 GROQ_API_KEY="your_groq_key"
 LANGSMITH_API_KEY="your_langsmith_key"
 LANGSMITH_PROJECT="self-improving-rag"
+LANGCHAIN_TRACING_V2="true"
 OCR_ENABLED="true"
 TESSERACT_CMD="C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 OCR_DPI=200
@@ -74,6 +78,18 @@ python run.py ui
 ```bash
 python run.py schedule
 ```
+
+## Observability (LangSmith)
+This project supports LangSmith tracing for end-to-end pipeline visibility.
+
+Required environment variables:
+```env
+LANGSMITH_API_KEY="your_langsmith_key"
+LANGSMITH_PROJECT="self-improving-rag"
+LANGCHAIN_TRACING_V2="true"
+```
+
+Once set, every pipeline run is traced with inputs, outputs, and latency metadata.
 
 ## 📈 Training & Self-Improvement
 The system automatically monitors the feedback database (`data/rag.db`). When the `FEEDBACK_THRESHOLD` is met, the system:
